@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ Admin</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    .db-status { padding: 10px 14px; border-radius: 8px; margin-bottom: 20px; font-size: 0.88rem; font-weight: 600; }
+    .db-ok  { background: var(--green-light); color: var(--green); }
+    .db-bad { background: #FEF2F2; color: #991B1B; }
+    .hosp-form .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .hosp-form .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 768px) { .hosp-form .form-row, .hosp-form .form-row.three { grid-template-columns: 1fr; gap: 0; } }
+  </style>
+</head>
+<body>
+
+<div class="demo-bar">
+  <span>College prototype — simulated data only. Changes here update the shared ResQ database immediately.</span>
+</div>
+
+<nav class="navbar">
+  <a class="nav-brand" href="index.html">
+    <div class="nav-logo"><span class="logo-r">R</span></div>
+    <div class="nav-title-group">
+      <span class="nav-title">ResQ</span>
+      <span class="nav-subtitle">Right Hospital. Right Time.</span>
+    </div>
+  </a>
+  <ul class="nav-links">
+    <li><a href="index.html#ambulance" class="nav-link">🚑 Ambulance Dashboard</a></li>
+    <li><a href="index.html#hospital" class="nav-link">🏥 Hospital Dashboard</a></li>
+    <li><a href="admin.html" class="nav-link active">🛠️ Admin Dashboard <span class="demo-chip">Demo</span></a></li>
+  </ul>
+</nav>
+
+<main class="main-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Admin Dashboard</h1>
+      <p class="page-subtitle">Manage hospitals and bed counts, and watch emergency requests. The other dashboards update within 3 seconds.</p>
+    </div>
+    <button class="btn btn-primary" onclick="openForm()">+ Add Hospital</button>
+  </div>
+
+  <p class="demo-notice">
+    <strong>Demo Notice:</strong> This section is for demonstration and testing purposes only. It is hidden from regular users and is not part of the public-facing website.
+  </p>
+
+  <div id="dbStatus" class="db-status">Connecting to database…</div>
+
+  <!-- Add / Edit hospital form (hidden until needed) -->
+  <div class="section-card" id="formCard" style="display:none">
+    <h2 class="section-title" id="formTitle">Add Hospital</h2>
+    <form class="hosp-form" onsubmit="saveHospital(event)" style="margin-top:14px">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label required" for="fId">Hospital ID</label>
+          <input id="fId" class="form-control" placeholder="e.g. H008" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label required" for="fName">Hospital Name</label>
+          <input id="fName" class="form-control" placeholder="e.g. Green Valley Hospital (Simulated)" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fLocation">Location</label>
+        <input id="fLocation" class="form-control" placeholder="Address, city" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fSpecialty">Specialties (separate with commas)</label>
+        <input id="fSpecialty" class="form-control" placeholder="e.g. Cardiology, Trauma, ICU" />
+      </div>
+      <div class="form-row three">
+        <div class="form-group">
+          <label class="form-label required" for="fTotal">Total Beds</label>
+          <input id="fTotal" type="number" min="0" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label required" for="fAvail">Available Beds</label>
+          <input id="fAvail" type="number" min="0" class="form-control" required />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="formSave">Save Hospital</button>
+        <button type="button" class="btn btn-outline" onclick="closeForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="section-card">
+    <div class="section-card-header">
+      <h2 class="section-title">Hospitals</h2>
+      <span class="text-muted" id="hospCount"></span>
+    </div>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>ID</th><th>Hospital</th><th>Location</th><th>Specialties</th><th class="num">Total Beds</th><th class="num">Available Beds</th><th>Last Updated</th><th>Actions</th></tr></thead>
+        <tbody id="hospBody"><tr><td colspan="8" class="muted-cell">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-card-header">
+      <h2 class="section-title">Emergency Requests</h2>
+      <span class="text-muted">Refreshes every 3 seconds</span>
+    </div>
+    <div class="table-wrap">
+      <table class="simple-table">
+        <thead><tr><th>Request ID</th><th>Ambulance</th><th>Emergency</th><th>Hospital</th><th>Status</th><th>Bed Allocated</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody id="reqBody"><tr><td colspan="8" class="muted-cell">No requests yet.</td></tr></tbody>
+      </table>
+    </div>
+    <p class="table-note">Order: Pending → Accepted → Bed Allocated. Rejecting never changes beds. Cancelling an allocated request gives the bed back.</p>
+  </div>
+</main>
+<div id="toastContainer" class="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script>
+  let hospitals = [];
+  let editingId = null;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[ch]));
+  const fmt = iso => iso ? new Date(iso).toLocaleString() : "—";
+
+  function toast(msg, type) {
+    const el = document.createElement("div");
+    el.className = "toast toast-" + (type || "info");
+    el.textContent = msg;
+    $("toastContainer").appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+  function setStatus(ok, msg) { const el = $("dbStatus"); el.className = "db-status " + (ok ? "db-ok" : "db-bad"); el.textContent = msg; }
+  function bedsPill(a, t) { const cls = a === 0 ? "beds-none" : a <= 3 ? "beds-low" : "beds-ok"; return `<span class="beds ${cls}">${a} / ${t}</span>`; }
+
+  /* ── Add / Edit form ── */
+  function openForm(id) {
+    const h = hospitals.find(x => x.hospital_id === id);
+    editingId = h ? h.hospital_id : null;
+    $("formTitle").textContent = h ? `Edit Hospital — ${h.hospital_name}` : "Add Hospital";
+    $("fId").value = h ? h.hospital_id : nextId();
+    $("fId").readOnly = !!h;
+    $("fName").value = h?.hospital_name || "";
+    $("fLocation").value = h?.location || "";
+    $("fSpecialty").value = h?.specialty || "";
+    $("fTotal").value = h ? h.total_beds : 10;
+    $("fAvail").value = h ? h.available_beds : 10;
+    $("formCard").style.display = "block";
+    $("formCard").scrollIntoView({ behavior: "smooth", block: "start" });
+    $("fName").focus();
+  }
+  function closeForm() { $("formCard").style.display = "none"; editingId = null; }
+  function nextId() {
+    const n = hospitals.reduce((m, h) => Math.max(m, parseInt(h.hospital_id.replace(/\D/g, "")) || 0), 0) + 1;
+    return "H" + String(n).padStart(3, "0");
+  }
+
+  async function saveHospital(e) {
+    e.preventDefault();
+    const row = {
+      hospital_id: $("fId").value.trim(), hospital_name: $("fName").value.trim(),
+      location: $("fLocation").value.trim(), specialty: $("fSpecialty").value.trim(),
+      total_beds: parseInt($("fTotal").value, 10), available_beds: parseInt($("fAvail").value, 10)
+    };
+    if (!row.hospital_id || !row.hospital_name) return toast("ID and name are required.", "warning");
+    if (!editingId && hospitals.some(h => h.hospital_id === row.hospital_id)) return toast("That hospital ID already exists.", "warning");
+    if (isNaN(row.total_beds) || isNaN(row.available_beds) || row.total_beds < 0 || row.available_beds < 0) return toast("Beds must be 0 or more.", "warning");
+    if (row.available_beds > row.total_beds) return toast("Available beds cannot be more than total beds.", "warning");
+    $("formSave").disabled = true;
+    try {
+      await ResQDB.saveHospital(row);
+      toast(`Saved ${row.hospital_name}.`, "success");
+      closeForm();
+      await loadHospitals();
+    } catch (err) { toast("Save failed: " + err.message, "error"); }
+    $("formSave").disabled = false;
+  }
+
+  async function deleteHospital(id) {
+    const h = hospitals.find(x => x.hospital_id === id);
+    if (!confirm(`Delete ${h?.hospital_name || id}? Its emergency requests will be deleted too.`)) return;
+    try { await ResQDB.deleteHospital(id); toast("Hospital deleted.", "success"); await loadHospitals(); loadRequests(); }
+    catch (err) { toast("Delete failed: " + err.message, "error"); }
+  }
+
+  /* ── Tables ── */
+  async function loadHospitals() {
+    hospitals = await ResQDB.listHospitals();
+    $("hospCount").textContent = `${hospitals.length} hospitals · simulated data`;
+    $("hospBody").innerHTML = hospitals.length ? hospitals.map(h => `<tr>
+      <td>${esc(h.hospital_id)}</td>
+      <td><strong>${esc(h.hospital_name)}</strong></td>
+      <td>${esc(h.location)}</td>
+      <td class="muted-cell">${esc(h.specialty)}</td>
+      <td class="num">${h.total_beds}</td>
+      <td class="num">${bedsPill(h.available_beds, h.total_beds)}</td>
+      <td class="muted-cell">${fmt(h.last_updated)}</td>
+      <td class="actions">
+        <button class="btn btn-outline btn-small" onclick="openForm('${esc(h.hospital_id)}')">Edit</button>
+        <button class="btn btn-danger btn-small" onclick="deleteHospital('${esc(h.hospital_id)}')">Delete</button>
+      </td></tr>`).join("")
+      : `<tr><td colspan="8" class="muted-cell">No hospitals yet. Click "+ Add Hospital".</td></tr>`;
+  }
+
+  async function loadRequests() {
+    const rows = await ResQDB.listRequests();
+    const name = id => hospitals.find(h => h.hospital_id === id)?.hospital_name || id;
+    const pill = r => {
+      if (r.request_status === "Accepted" && r.bed_allocated) return `<span class="st st-allocated">Bed Allocated</span>`;
+      const cls = { Pending: "st-pending", Accepted: "st-accepted", Rejected: "st-rejected", Cancelled: "st-cancelled" }[r.request_status];
+      return `<span class="st ${cls}">${esc(r.request_status)}</span>`;
+    };
+    const btn = (id, a, label, cls) => `<button class="btn ${cls} btn-small" onclick="decide('${esc(id)}','${a}')">${label}</button>`;
+    const actions = r => {
+      if (r.request_status === "Pending") return btn(r.request_id, "accept", "Accept", "btn-success") + btn(r.request_id, "reject", "Reject", "btn-danger") + btn(r.request_id, "cancel", "Cancel", "btn-outline");
+      if (r.request_status === "Accepted" && !r.bed_allocated) return btn(r.request_id, "allocate", "🛏️ Confirm Bed", "btn-primary") + btn(r.request_id, "reject", "Reject", "btn-danger") + btn(r.request_id, "cancel", "Cancel", "btn-outline");
+      if (r.request_status === "Accepted") return btn(r.request_id, "cancel", "Cancel & release bed", "btn-outline");
+      return `<span class="muted-cell">—</span>`;
+    };
+    $("reqBody").innerHTML = rows.length ? rows.map(r => `<tr>
+      <td class="muted-cell">${esc(r.request_id)}</td><td>${esc(r.ambulance_number)}</td><td>${esc(r.emergency_type)}</td>
+      <td>${esc(name(r.hospital_id))}</td><td>${pill(r)}</td><td>${r.bed_allocated ? "Yes" : "No"}</td>
+      <td class="muted-cell">${fmt(r.created_at)}</td><td class="actions">${actions(r)}</td>
+    </tr>`).join("") : `<tr><td colspan="8" class="muted-cell">No requests yet.</td></tr>`;
+  }
+
+  async function decide(id, action) {
+    try {
+      if (action === "accept") { await ResQDB.acceptRequest(id); toast("Accepted. Next: Confirm Bed.", "success"); }
+      else if (action === "allocate") { const left = await ResQDB.confirmAllocation(id); toast(`Bed allocated. Beds left: ${left}`, "success"); }
+      else if (action === "reject") { await ResQDB.rejectRequest(id); toast("Rejected. Bed count unchanged.", "info"); }
+      else { const left = await ResQDB.cancelRequest(id); toast(`Cancelled. Beds available: ${left}`, "info"); }
+    } catch (err) { toast(err.message, "error"); }
+    await loadHospitals(); loadRequests();
+  }
+
+  async function tick() {
+    try { await loadHospitals(); await loadRequests(); setStatus(true, "✓ Connected to the shared ResQ database (Supabase)."); }
+    catch (err) { setStatus(false, "Database error: " + err.message); }
+  }
+
+  if (!ResQDB.connected) setStatus(false, "Not connected. Fill in SUPABASE_URL and SUPABASE_ANON_KEY in config.js.");
+  else { tick(); setInterval(tick, 3000); }
+</script>
+</body>
+</html>

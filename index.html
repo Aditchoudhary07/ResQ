@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ — Right Hospital. Right Time.</title>
+  <meta name="description" content="ResQ is an emergency-response coordination platform connecting ambulance crews to the right hospital at the right time." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- DEMO NOTICE BAR -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="demo-bar" id="demoBanner">
+  <span class="demo-icon">⚠️</span>
+  <span>College prototype — simulated data only. Not connected to real emergency services. In a real emergency call 112.</span>
+  <button class="demo-bar-close" onclick="document.getElementById('demoBanner').style.display='none'">✕</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- NAVIGATION -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <div class="nav-brand">
+    <div class="nav-logo">
+      <span class="logo-r">R</span>
+    </div>
+    <div class="nav-title-group">
+      <span class="nav-title">ResQ</span>
+      <span class="nav-subtitle" data-i18n="navTagline">Right Hospital. Right Time.</span>
+    </div>
+  </div>
+
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#ambulance" class="nav-link active" data-page="ambulance" onclick="showPage('ambulance')">🚑 Ambulance Dashboard</a></li>
+    <li><a href="#hospital" class="nav-link" data-page="hospital" onclick="showPage('hospital')">🏥 Hospital Dashboard</a></li>
+    <!-- Internal demo link: shown only on localhost/Live Server or with ?demo=1 (see script.js) -->
+    <li id="adminNavItem" hidden><a href="admin.html" class="nav-link nav-link-demo" title="Internal demo/testing page">🛠️ Admin Dashboard <span class="demo-chip">Demo</span></a></li>
+  </ul>
+
+  <div class="nav-controls">
+    <!-- kept for internal role switching; hidden in the simplified header -->
+    <select id="roleSelect" onchange="switchRole(this.value)" class="role-select" hidden>
+      <option value="ambulance">Ambulance</option>
+      <option value="hospital">Hospital</option>
+      <option value="dispatcher">Dispatcher</option>
+    </select>
+    <button class="lang-toggle" id="langToggle" onclick="toggleLanguage()" title="Switch Language">
+      <span id="langLabel">हिंदी</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MAIN CONTENT AREA -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<main class="main-content" id="mainContent">
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: AMBULANCE DASHBOARD -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page active" id="page-ambulance">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Ambulance Dashboard</h1>
+        <p class="page-subtitle">1. Fill in the emergency &nbsp;→&nbsp; 2. Choose a hospital &nbsp;→&nbsp; 3. Track the hospital's answer below</p>
+      </div>
+    </div>
+
+    <!-- Step 1: Emergency request form -->
+    <div class="section-card">
+      <h2 class="section-title">1. New Emergency Request</h2>
+      <form id="quickEmergencyForm" class="simple-form" onsubmit="submitQuickEmergency(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required" for="qPlate">Ambulance Number</label>
+            <input type="text" id="qPlate" class="form-control" placeholder="e.g. DL 1C AB 1234" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label required" for="qCategory">Emergency Type</label>
+            <select id="qCategory" class="form-control" required>
+              <option value="">— Select type —</option>
+              <option value="cardiac">Cardiac (heart)</option>
+              <option value="stroke">Stroke</option>
+              <option value="trauma">Accident / Trauma</option>
+              <option value="fracture">Fracture</option>
+              <option value="respiratory">Breathing problem</option>
+              <option value="obstetric">Pregnancy / Obstetric</option>
+              <option value="paediatric">Child (Paediatric)</option>
+              <option value="burns">Burns</option>
+              <option value="poisoning">Poisoning</option>
+              <option value="medical">General Medical</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label required" for="qCondition">Patient Condition</label>
+            <select id="qCondition" class="form-control" required>
+              <option value="critical">Critical — life-threatening</option>
+              <option value="urgent" selected>Serious — needs urgent care</option>
+              <option value="standard">Stable</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="qAge">Patient Age (approx.)</label>
+            <input type="text" id="qAge" class="form-control" placeholder="e.g. 45" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label required" for="qLocation">Pickup Location</label>
+          <div class="location-row">
+            <input type="text" id="qLocation" class="form-control" placeholder="Address or area" required />
+            <button type="button" class="btn btn-outline btn-small" onclick="getQuickLocation()">📍 Use GPS</button>
+          </div>
+          <select id="qArea" class="form-control" style="margin-top:8px" onchange="pickQuickArea(this.value)">
+            <option value="">…or pick a nearby area (used for distance)</option>
+            <option value="28.6315,77.2167|Connaught Place, New Delhi">Connaught Place, New Delhi</option>
+            <option value="28.5677,77.2433|Lajpat Nagar, New Delhi">Lajpat Nagar, New Delhi</option>
+            <option value="28.4595,77.0266|Cyber City, Gurugram">Cyber City, Gurugram</option>
+            <option value="12.9716,77.5946|MG Road, Bengaluru">MG Road, Bengaluru</option>
+            <option value="13.0827,80.2707|T. Nagar, Chennai">T. Nagar, Chennai</option>
+          </select>
+          <div id="qLocationStatus" class="field-hint"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="qNotes">Short Note (optional)</label>
+          <input type="text" id="qNotes" class="form-control" placeholder="e.g. conscious, chest pain for 20 min" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Find Hospitals →</button>
+          <button type="button" class="btn btn-outline btn-small" onclick="openEmergencyForm()" title="Optional detailed form with full clinical checklist">Detailed clinical form</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Step 2: Recommended hospitals (filled after the form) -->
+    <div class="section-card" id="quickRecsCard" style="display:none">
+      <div class="section-card-header">
+        <h2 class="section-title">2. Choose a Hospital</h2>
+        <button class="btn btn-outline btn-small" onclick="hideQuickRecs()">Close</button>
+      </div>
+      <p class="text-muted" id="quickRecsContext"></p>
+      <div class="table-wrap"><table class="simple-table" id="quickRecsTable"></table></div>
+      <p class="table-note">Distance is a straight-line estimate and travel time is approximate. Hospital data is simulated.</p>
+    </div>
+
+    <!-- Step 3: Request status -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h2 class="section-title">3. My Requests</h2>
+        <a href="#" class="text-link" onclick="showPage('cases');return false;">View all cases</a>
+      </div>
+      <div class="table-wrap" id="ambRequestsTable"><p class="empty-state">No requests yet. Fill in the form above to start.</p></div>
+      <p class="table-note">Status: <span class="st st-pending">Pending</span> waiting for hospital · <span class="st st-accepted">Accepted</span> hospital agreed · <span class="st st-allocated">Bed Allocated</span> bed reserved · <span class="st st-rejected">Rejected</span> choose another hospital</p>
+    </div>
+
+    <!-- Live bed availability -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h2 class="section-title">Hospital Bed Availability</h2>
+        <span class="text-muted" id="liveBedsStatus">Simulated data</span>
+      </div>
+      <div class="table-wrap" id="liveBedsList"><p class="empty-state">Loading…</p></div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: HOSPITAL DASHBOARD -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-hospital">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Hospital Dashboard</h1>
+        <p class="page-subtitle">Accept or reject incoming requests, then confirm the bed allocation.</p>
+      </div>
+      <div class="form-group" style="margin:0;min-width:240px">
+        <label class="form-label" for="hospViewSelect">Viewing hospital</label>
+        <select id="hospViewSelect" class="form-control" onchange="setHospView(this.value)"></select>
+      </div>
+    </div>
+
+    <!-- Hospital summary -->
+    <div class="summary-row">
+      <div class="summary-card">
+        <div class="summary-label">Available Beds</div>
+        <div class="summary-value" id="hospLiveBeds">—</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Waiting for decision</div>
+        <div class="summary-value" id="hospPendingCount">0</div>
+      </div>
+      <div class="summary-card summary-wide">
+        <div class="summary-label">Specialties</div>
+        <div class="summary-text" id="hospSpecialties">—</div>
+        <div class="summary-label" style="margin-top:6px">Location</div>
+        <div class="summary-text" id="hospLocation">—</div>
+      </div>
+    </div>
+
+    <!-- Incoming requests table -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h2 class="section-title">Incoming Emergency Requests</h2>
+      </div>
+      <div class="table-wrap" id="hospRequestsTable"><p class="empty-state">No requests for this hospital yet.</p></div>
+      <p class="table-note">Steps: <strong>Accept</strong> or <strong>Reject</strong> → after accepting, click <strong>Confirm Bed</strong>. Beds are reduced only when the bed is confirmed.</p>
+    </div>
+
+    <!-- Advanced (existing detailed features, kept but tucked away) -->
+    <details class="section-card advanced-block">
+      <summary class="section-title">More: patient preparation, resources &amp; handovers</summary>
+
+      <div id="incomingRequestsList" hidden></div>
+
+      <h3 class="sub-title">Incoming Patient Preparation</h3>
+      <div id="incomingPrepList">
+        <p class="empty-state">No accepted ambulances being prepared.</p>
+      </div>
+
+      <h3 class="sub-title">Resource Status <span class="text-muted">(demo)</span></h3>
+      <div class="resource-grid">
+        <div class="resource-item"><span class="resource-icon">🛏️</span><div>
+          <div class="resource-label">ED Bays</div>
+          <div class="resource-value"><select onchange="updateResourceStatus('edBays', this.value)" class="status-select">
+            <option value="available">Available</option><option value="limited">Limited</option><option value="full">Full</option></select></div></div></div>
+        <div class="resource-item"><span class="resource-icon">❤️</span><div>
+          <div class="resource-label">Cath Lab</div>
+          <div class="resource-value"><select onchange="updateResourceStatus('cathLab', this.value)" class="status-select">
+            <option value="available">Available</option><option value="inUse">In Use</option><option value="unavailable">Unavailable</option></select></div></div></div>
+        <div class="resource-item"><span class="resource-icon">🧠</span><div>
+          <div class="resource-label">Stroke Team</div>
+          <div class="resource-value"><select onchange="updateResourceStatus('strokeTeam', this.value)" class="status-select">
+            <option value="available">Available</option><option value="busy">Busy</option><option value="unavailable">Unavailable</option></select></div></div></div>
+        <div class="resource-item"><span class="resource-icon">🩹</span><div>
+          <div class="resource-label">Trauma Bay</div>
+          <div class="resource-value"><select onchange="updateResourceStatus('traumaBay', this.value)" class="status-select">
+            <option value="available">Available</option><option value="occupied">Occupied</option><option value="unavailable">Unavailable</option></select></div></div></div>
+      </div>
+
+      <h3 class="sub-title">Handovers Today</h3>
+      <div id="hospitalCompletedList">
+        <p class="empty-state">No completed handovers yet.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: ALL CASES -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-cases">
+    <div class="page-header">
+      <h1 class="page-title" data-i18n="casesTitle">All Cases</h1>
+      <button class="btn btn-primary" onclick="openEmergencyForm()" data-i18n="btnNewCase">+ New Case</button>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="caseSearch" placeholder="Search cases..." class="search-input" oninput="renderCases()" data-i18n-placeholder="searchCases" />
+      <select id="caseFilter" onchange="renderCases()" class="filter-select">
+        <option value="all" data-i18n="filterAll">All Status</option>
+        <option value="active" data-i18n="filterActive">Active</option>
+        <option value="accepted" data-i18n="filterAccepted">Accepted</option>
+        <option value="pending" data-i18n="filterPending">Pending</option>
+        <option value="complete" data-i18n="filterComplete">Complete</option>
+        <option value="declined" data-i18n="filterDeclined">Declined</option>
+      </select>
+    </div>
+    <div id="allCasesList">
+      <p class="empty-state" data-i18n="noCases">No cases yet.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: HOSPITAL DIRECTORY -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-directory">
+    <div class="page-header">
+      <h1 class="page-title" data-i18n="directoryTitle">Hospital Directory</h1>
+      <span class="badge-demo">DEMO DATA</span>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="hospSearch" placeholder="Search hospitals..." class="search-input" oninput="renderDirectory()" />
+      <select id="hospCapFilter" onchange="renderDirectory()" class="filter-select">
+        <option value="all">All Capabilities</option>
+        <option value="cardiac">Cardiac / PCI</option>
+        <option value="stroke">Stroke Centre</option>
+        <option value="trauma">Trauma Centre</option>
+        <option value="paediatric">Paediatric</option>
+        <option value="obstetric">Obstetric</option>
+        <option value="burns">Burns Unit</option>
+      </select>
+    </div>
+    <div id="directoryList" class="hospital-grid"></div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: ARRIVAL PASSPORT -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-passport">
+    <div class="page-header">
+      <h1 class="page-title" data-i18n="passportTitle">Arrival Passport</h1>
+    </div>
+    <div class="filter-bar">
+      <select id="passportCaseSelect" onchange="renderPassport()" class="filter-select" style="max-width:320px">
+        <option value="">— Select a case —</option>
+      </select>
+      <button class="btn btn-primary" onclick="printPassport()" data-i18n="btnPrint">🖨️ Print / Save PDF</button>
+    </div>
+    <div id="passportContent">
+      <p class="empty-state" data-i18n="selectCase">Select a case above to generate the Arrival Passport.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: ANALYTICS -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-analytics">
+    <div class="page-header">
+      <h1 class="page-title" data-i18n="analyticsTitle">Demo Statistics</h1>
+      <span class="badge-demo">DEMO DATA</span>
+    </div>
+    <div class="info-banner info-blue">
+      <span>ℹ️</span>
+      <span data-i18n="analyticsNote">Statistics calculated from saved demo records only. Not real operational data.</span>
+    </div>
+    <div class="stats-grid" id="analyticsGrid">
+      <!-- filled by JS -->
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: REGIONAL EMERGENCY NETWORK -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-network">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Regional Emergency Network</h1>
+        <p class="page-subtitle">Authorized Dispatch & Regional Hospital Coordination Command</p>
+      </div>
+      <span class="badge-demo">NETWORK DISPATCH VIEW</span>
+    </div>
+
+    <div class="info-banner info-blue">
+      <span>📡</span>
+      <span>Regional coordination console. Shows verified hospital capabilities, real-time incoming cases, capacity pressure, and alternative routing. Privacy Notice: Zero patient personal identifiers exposed in regional analytics.</span>
+    </div>
+
+    <!-- Network Filter Bar -->
+    <div class="filter-bar network-filter-bar">
+      <select id="netRegionFilter" onchange="renderNetworkPage()" class="filter-select">
+        <option value="all">🌐 All Regions</option>
+        <option value="delhi_central">Delhi NCR — Central / North</option>
+        <option value="delhi_south">Delhi NCR — South</option>
+        <option value="gurugram">Haryana — Gurugram</option>
+        <option value="bengaluru">Karnataka — Bengaluru</option>
+        <option value="chennai">Tamil Nadu — Chennai</option>
+      </select>
+      <select id="netTypeFilter" onchange="renderNetworkPage()" class="filter-select">
+        <option value="all">All Emergency Types</option>
+        <option value="cardiac">❤️ Cardiac</option>
+        <option value="stroke">🧠 Stroke</option>
+        <option value="trauma">🩹 Trauma</option>
+        <option value="burns">🔥 Burns</option>
+        <option value="respiratory">🫁 Respiratory</option>
+        <option value="paediatric">👶 Paediatric</option>
+      </select>
+      <select id="netCapFilter" onchange="renderNetworkPage()" class="filter-select">
+        <option value="all">All Clinical Capabilities</option>
+        <option value="cardiac">Cath Lab / PCI</option>
+        <option value="stroke">Stroke Unit / tPA</option>
+        <option value="trauma">Level I / II Trauma Bay</option>
+        <option value="burns">Burns Unit</option>
+        <option value="icu">Critical Care / ICU</option>
+      </select>
+      <select id="netStatusFilter" onchange="renderNetworkPage()" class="filter-select">
+        <option value="all">All Operational Statuses</option>
+        <option value="available">🟢 Available (Accepting)</option>
+        <option value="limited">🟡 Limited Capacity</option>
+        <option value="full">🔴 Diversion / Full</option>
+      </select>
+    </div>
+
+    <!-- Network KPI Cards -->
+    <div class="stats-grid" id="networkStatsGrid">
+      <!-- filled by JS -->
+    </div>
+
+    <!-- Active Alternative Routing & Escalation Queue -->
+    <div class="section-card" id="networkEscalationCard">
+      <div class="section-card-header">
+        <h2 class="section-title">Cases Requiring Alternative Coordination</h2>
+        <span class="badge badge-amber" id="escalationCountBadge">0 Pending</span>
+      </div>
+      <div id="networkEscalationList">
+        <p class="empty-state">No cases currently require alternative hospital coordination.</p>
+      </div>
+    </div>
+
+    <!-- Regional Coverage Gaps & Recurring Bottlenecks (Historical vs Real-time) -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h2 class="section-title">Geographic Coverage Gaps & Bottlenecks</h2>
+        <span class="badge-demo">VERIFIED & HISTORICAL TRENDS</span>
+      </div>
+      <div id="networkBottlenecksList" class="bottlenecks-container">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- Participating Facilities Matrix -->
+    <div class="section-card">
+      <div class="section-card-header">
+        <h2 class="section-title">Participating Hospitals & Live Readiness</h2>
+        <span class="text-muted" id="networkHospCount">Showing all participating facilities</span>
+      </div>
+      <div id="networkHospitalList" class="network-hospital-grid">
+        <!-- filled by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <!-- PAGE: SETTINGS -->
+  <!-- ─────────────────────────────────────────────────────── -->
+  <section class="page" id="page-settings">
+    <div class="page-header">
+      <h1 class="page-title" data-i18n="settingsTitle">Settings</h1>
+    </div>
+
+    <div class="section-card">
+      <h2 class="section-title" data-i18n="demoConfig">Demo Configuration</h2>
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="setAmbId">Ambulance Unit ID</label>
+        <input type="text" id="settingAmbId" class="settings-input" placeholder="AMB-001" />
+      </div>
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="setCrewName">Crew Name</label>
+        <input type="text" id="settingCrewName" class="settings-input" placeholder="Crew Member Name" />
+      </div>
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="setOrg">Organisation</label>
+        <input type="text" id="settingOrg" class="settings-input" placeholder="Ambulance Organisation" />
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()" data-i18n="btnSave">Save Settings</button>
+    </div>
+
+    <div class="section-card">
+      <h2 class="section-title" data-i18n="dataManagement">Data Management</h2>
+      <p class="text-muted" data-i18n="dataNote">All data is stored locally in your browser. No data is sent to any server.</p>
+      <div class="settings-actions">
+        <button class="btn btn-outline" onclick="restoreSampleData()" data-i18n="btnRestoreData">↩️ Restore Sample Data</button>
+        <button class="btn btn-danger" onclick="confirmResetData()" data-i18n="btnResetData">🗑️ Reset All Demo Data</button>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <h2 class="section-title" data-i18n="about">About ResQ</h2>
+      <p class="text-muted">ResQ — Right Hospital. Right Time.</p>
+      <p class="text-muted" data-i18n="aboutNote">This is a frontend demonstration of emergency-response coordination concepts. It is not connected to real emergency services, hospitals, or dispatch systems. All hospital data, recommendations, and acceptance responses are simulated.</p>
+      <p class="text-muted" style="margin-top:8px;font-weight:600;color:var(--red);" data-i18n="aboutSafety">For real emergencies: call 112 (India), 999 (UK), 911 (US), or your regional emergency number.</p>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <span>More tools:</span>
+    <a href="#" onclick="showPage('cases');return false;">All Cases</a>
+    <a href="#" onclick="showPage('directory');return false;">Hospital Directory</a>
+    <a href="#" onclick="showPage('passport');return false;">Arrival Passport</a>
+    <a href="#" onclick="showPage('network');return false;">Regional Network</a>
+    <a href="#" onclick="showPage('analytics');return false;">Statistics</a>
+    <a href="#" onclick="showPage('settings');return false;">Settings</a>
+    <span class="footer-note">ResQ college prototype · simulated data</span>
+  </footer>
+
+</main><!-- /main-content -->
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: CREATE EMERGENCY -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalEmergency" onclick="closeModalOnOverlay(event,'modalEmergency')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 data-i18n="formTitle">New Emergency</h2>
+      <button class="modal-close" onclick="closeModal('modalEmergency')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="emergencyForm" onsubmit="submitEmergencyForm(event)">
+
+        <div class="form-group">
+          <label class="form-label required">Ambulance Official Registration Plate</label>
+          <div class="plate-input-container">
+            <input type="text" id="fldAmbPlate" class="form-control plate-input" placeholder="e.g. DL 1C AB 1234" required />
+            <div class="plate-quick-chips">
+              <span class="chip-label">Quick select:</span>
+              <button type="button" class="btn-chip" onclick="setPlate('DL 1C AB 1234')">DL 1C AB 1234</button>
+              <button type="button" class="btn-chip" onclick="setPlate('DL 1C EF 5678')">DL 1C EF 5678</button>
+              <button type="button" class="btn-chip" onclick="setPlate('HR 26 CY 9901')">HR 26 CY 9901</button>
+            </div>
+          </div>
+          <span class="field-hint">Bound to ResQ Case ID, Verified Arrival Passport, and Gate Pass to prevent mislinking.</span>
+          <span class="field-error" id="errAmbPlate"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required" data-i18n="lblCategory">Emergency Type</label>
+          <select id="fldCategory" class="form-control" required>
+            <option value="" data-i18n="selectType">— Select type —</option>
+            <option value="cardiac" data-i18n="catCardiac">❤️ Cardiac Emergency</option>
+            <option value="stroke" data-i18n="catStroke">🧠 Suspected Stroke</option>
+            <option value="trauma" data-i18n="catTrauma">🩹 Accident / Trauma</option>
+            <option value="fracture" data-i18n="catFracture">🦴 Suspected Fracture</option>
+            <option value="respiratory" data-i18n="catRespiratory">🫁 Respiratory Emergency</option>
+            <option value="obstetric" data-i18n="catObstetric">🤰 Obstetric Emergency</option>
+            <option value="paediatric" data-i18n="catPaediatric">👶 Paediatric Emergency</option>
+            <option value="burns" data-i18n="catBurns">🔥 Burns</option>
+            <option value="poisoning" data-i18n="catPoisoning">☠️ Poisoning</option>
+            <option value="medical" data-i18n="catMedical">🏥 General Medical</option>
+            <option value="other" data-i18n="catOther">❓ Other</option>
+          </select>
+          <span class="field-error" id="errCategory"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label required" data-i18n="lblLocation">Incident Location</label>
+          <div class="location-row">
+            <input type="text" id="fldLocation" class="form-control" placeholder="Enter address or area..." required />
+            <button type="button" class="btn btn-outline btn-small" onclick="getLocation()" data-i18n="btnGPS">📍 GPS</button>
+          </div>
+          <div id="locationStatus" class="field-hint"></div>
+          <span class="field-error" id="errLocation"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-i18n="lblAge">Patient Age (approximate)</label>
+          <input type="text" id="fldAge" class="form-control" placeholder="e.g. 45, unknown, infant" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-i18n="lblNotes">Key Observations / Presenting Complaint</label>
+          <textarea id="fldNotes" class="form-control" rows="3" placeholder="Conscious, breathing, pain level, visible injuries..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-i18n="lblPriority">Priority</label>
+          <div class="priority-row">
+            <label class="radio-option">
+              <input type="radio" name="priority" value="critical" /> <span class="badge badge-red" data-i18n="priCritical">Critical</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="priority" value="urgent" checked /> <span class="badge badge-amber" data-i18n="priUrgent">Urgent</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="priority" value="standard" /> <span class="badge badge-blue" data-i18n="priStandard">Standard</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" data-i18n="lblAmbId">Ambulance Unit ID</label>
+            <input type="text" id="fldAmbId" class="form-control" readonly />
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-i18n="lblCrew">Crew Member Name</label>
+            <input type="text" id="fldCrew" class="form-control" placeholder="Crew name" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" data-i18n="lblOrg">Organisation</label>
+          <input type="text" id="fldOrg" class="form-control" placeholder="Ambulance service name" />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeModal('modalEmergency')" data-i18n="btnCancel">Cancel</button>
+          <button type="submit" class="btn btn-primary">Pre-Arrival Clinical Checklist →</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: PRE-ARRIVAL CLINICAL CHECKLIST & VERIFICATION -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalClinicalChecklist" onclick="closeModalOnOverlay(event,'modalClinicalChecklist')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <div>
+        <h2>Pre-Arrival Clinical Checklist</h2>
+        <p class="section-subtitle" id="chkCaseHeader">Verify patient condition, vitals, and interventions before hospital transmission</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalClinicalChecklist')">✕</button>
+    </div>
+    <div class="modal-body" id="clinicalChecklistBody">
+      <!-- filled dynamically by JS with interactive checklist, vitals timestamps, crew & doctor sign-off -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: CONFIRM HOSPITAL PREPARATION STATUS (Hospital Side) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalPrepStatus" onclick="closeModalOnOverlay(event,'modalPrepStatus')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <div>
+        <h2>Confirm Hospital Preparation Status</h2>
+        <p class="section-subtitle">Explicitly verify resource readiness for incoming patient arrival</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalPrepStatus')">✕</button>
+    </div>
+    <div class="modal-body" id="modalPrepStatusBody">
+      <!-- filled dynamically by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: UPDATE PATIENT CONDITION (In-Transit) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalConditionUpdate" onclick="closeModalOnOverlay(event,'modalConditionUpdate')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Update Patient Condition in Transit</h2>
+        <p class="section-subtitle">Dynamic reconfirmation will be triggered for receiving hospital</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalConditionUpdate')">✕</button>
+    </div>
+    <div class="modal-body" id="modalConditionUpdateBody">
+      <!-- filled dynamically by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: GATE CHECK-IN & ARRIVAL VERIFICATION -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalGateCheckin" onclick="closeModalOnOverlay(event,'modalGateCheckin')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2>Hospital Gate Arrival Clearance</h2>
+        <p class="section-subtitle">Verify vehicle plate and ResQ Case ID at receiving gate</p>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalGateCheckin')">✕</button>
+    </div>
+    <div class="modal-body" id="modalGateCheckinBody">
+      <!-- filled dynamically by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: HOSPITAL RECOMMENDATIONS -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalHospitals" onclick="closeModalOnOverlay(event,'modalHospitals')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 data-i18n="recTitle">Recommended Hospitals</h2>
+      <div class="header-badges">
+        <span class="badge-demo">DEMO</span>
+        <button class="modal-close" onclick="closeModal('modalHospitals')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="info-banner info-amber">
+        <span>⚠️</span>
+        <span data-i18n="recDemoNote">Hospital data is simulated for demonstration. Distance is approximate. Readiness data is not real.</span>
+      </div>
+      <div id="caseContext" class="case-context-bar"></div>
+      <div id="recommendationsList"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modalHospitals')" data-i18n="btnBack">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: CASE DETAIL -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalCaseDetail" onclick="closeModalOnOverlay(event,'modalCaseDetail')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 id="caseDetailTitle">Case Detail</h2>
+      <button class="modal-close" onclick="closeModal('modalCaseDetail')">✕</button>
+    </div>
+    <div class="modal-body" id="caseDetailBody">
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: HOSPITAL RESPONSE (Hospital side) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalHospResponse" onclick="closeModalOnOverlay(event,'modalHospResponse')">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 data-i18n="respTitle">Respond to Request</h2>
+      <button class="modal-close" onclick="closeModal('modalHospResponse')">✕</button>
+    </div>
+    <div class="modal-body" id="modalHospResponseBody">
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: HOSPITAL DETAIL (Directory) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalHospDetail" onclick="closeModalOnOverlay(event,'modalHospDetail')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 id="hospDetailName">Hospital Detail</h2>
+      <button class="modal-close" onclick="closeModal('modalHospDetail')">✕</button>
+    </div>
+    <div class="modal-body" id="hospDetailBody">
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- MODAL: HANDOVER FORM -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalHandover" onclick="closeModalOnOverlay(event,'modalHandover')">
+  <div class="modal modal-large">
+    <div class="modal-header">
+      <h2 data-i18n="handoverTitle">Structured No-Repetition Patient Handover</h2>
+      <button class="modal-close" onclick="closeModal('modalHandover')">✕</button>
+    </div>
+    <div class="modal-body" id="handoverBody">
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TOAST NOTIFICATIONS -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PRINTABLE PASSPORT (hidden, for print only) -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div id="printablePassport" class="printable-only">
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="db.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
